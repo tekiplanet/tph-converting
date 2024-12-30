@@ -471,14 +471,14 @@ const Subscription = () => {
                             <p className="text-sm text-muted-foreground">Card Number</p>
                             <p className="font-mono font-medium">{subscription.tracking_code}</p>
                           </div>
-                          <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                          {/* <div className="p-4 rounded-lg bg-muted/50 space-y-1">
                             <p className="text-sm text-muted-foreground">Last Check-in</p>
                             <p className="font-medium">
                               {subscription.last_check_in 
                                 ? format(new Date(subscription.last_check_in), "MMM d, yyyy h:mm a")
                                 : "No check-in recorded"}
                             </p>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>
