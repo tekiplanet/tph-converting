@@ -28,6 +28,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tekiplanet" />
                 <data android:host="app" />
+                <data android:pathPrefix="/paystack-callback" />
             </intent-filter>
 
             <intent-filter>

@@ -234,7 +234,14 @@ const AppContent = () => {
               </AdminLayout>
             </AdminGuard>
           } />
-          <Route path="/paystack-callback" element={<ProtectedRoute><PaystackCallback /></ProtectedRoute>} />
+          <Route 
+            path="/paystack-callback" 
+            element={
+              <ProtectedRoute>
+                <PaystackCallback />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Suspense>
       <Toaster />
@@ -304,11 +311,17 @@ const App = () => {
     CapacitorApp.addListener('appUrlOpen', async (data: { url: string }) => {
       console.log('App opened with URL:', data.url);
       
-      // Parse the URL
-      const slug = data.url.split('.org').pop();
-      if (slug) {
-        // Navigate to the route
-        window.location.hash = slug;
+      if (data.url.includes('paystack-callback')) {
+        // Extract query parameters
+        const url = new URL(data.url);
+        const reference = url.searchParams.get('reference');
+        const trxref = url.searchParams.get('trxref');
+        const status = url.searchParams.get('status');
+
+        console.log('Payment callback received:', { reference, trxref, status });
+
+        // Navigate to PaystackCallback component with query parameters
+        window.location.hash = `/paystack-callback?reference=${reference}&trxref=${trxref}&status=${status}`;
       }
     });
 
