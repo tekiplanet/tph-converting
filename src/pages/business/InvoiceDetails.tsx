@@ -37,6 +37,9 @@ import { differenceInDays, isSameDay, isPast, format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/EmptyState";
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
+import axios from 'axios';
 
 // Status badge variants mapping
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "success"> = {
@@ -134,6 +137,7 @@ export default function InvoiceDetails() {
   const [isSending, setIsSending] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState<string | null>(null);
 
   // Fetch invoice details
   const { 
@@ -169,10 +173,69 @@ export default function InvoiceDetails() {
   const handleDownloadInvoice = async () => {
     try {
       setIsDownloading(true);
-      await businessService.downloadInvoice(invoice.id);
-      toast.success('Invoice downloaded successfully');
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/business/invoices/${invoiceId}/download`,
+        {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Accept': 'application/pdf'
+          }
+        }
+      );
+
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `business-invoice-${invoiceId}-${Date.now()}.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Invoice Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
+          });
+        }
+      } else {
+        // Web browser handling
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `business-invoice-${invoiceId}-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Invoice Downloaded');
+      }
     } catch (error) {
-      toast.error('Failed to download invoice');
+      console.error('Failed to download invoice:', error);
+      toast.error('Failed to download invoice', {
+        description: error instanceof Error ? error.message : 'Please try again later'
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -192,10 +255,72 @@ export default function InvoiceDetails() {
 
   const handleDownloadReceipt = async (paymentId: string) => {
     try {
-      await businessService.downloadReceipt(invoice.id, paymentId);
-      toast.success('Receipt downloaded successfully');
+      setIsDownloadingReceipt(paymentId);
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/business/invoices/${invoice.id}/payments/${paymentId}/receipt`,
+        {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Accept': 'application/pdf'
+          }
+        }
+      );
+
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `payment-receipt-${paymentId}-${Date.now()}.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Receipt Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
+          });
+        }
+      } else {
+        // Web browser handling
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `payment-receipt-${paymentId}-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Receipt Downloaded');
+      }
     } catch (error) {
-      toast.error('Failed to download receipt');
+      console.error('Failed to download receipt:', error);
+      toast.error('Failed to download receipt', {
+        description: error instanceof Error ? error.message : 'Please try again later'
+      });
+    } finally {
+      setIsDownloadingReceipt(null);
     }
   };
 
@@ -225,7 +350,7 @@ export default function InvoiceDetails() {
                 <Button 
                   variant="outline"
                   size="sm"
-                  onClick={handleDownloadInvoice}
+                  onClick={handleDownloadInvoice} 
                   disabled={isDownloading}
                   className="hidden sm:flex"
                 >
@@ -237,7 +362,7 @@ export default function InvoiceDetails() {
                   ) : (
                     <>
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      Download Invoice
                     </>
                   )}
                 </Button>
@@ -267,8 +392,17 @@ export default function InvoiceDetails() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={handleDownloadInvoice} disabled={isDownloading}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Invoice
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Invoice
+                        </>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleSendInvoice} disabled={isSending}>
                       <Send className="h-4 w-4 mr-2" />
@@ -533,8 +667,13 @@ export default function InvoiceDetails() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDownloadReceipt(payment.id)}
+                              disabled={isDownloadingReceipt === payment.id}
                             >
-                              <Download className="h-4 w-4" />
+                              {isDownloadingReceipt === payment.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
