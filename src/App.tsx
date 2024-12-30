@@ -34,6 +34,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { Browser } from '@capacitor/browser';
+import DebugLogger from '@/components/DebugLogger';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -245,6 +246,7 @@ const AppContent = () => {
         </Routes>
       </Suspense>
       <Toaster />
+      {import.meta.env.DEV && <DebugLogger />}
     </Router>
   );
 };

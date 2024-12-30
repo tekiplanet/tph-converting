@@ -24,6 +24,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import axios from 'axios';
 import { useQuery } from "@tanstack/react-query";
 import { settingsService } from "@/services/settingsService";
+import { platformService } from '@/services/platformService';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface TransactionDetails {
   transaction: {
@@ -49,6 +51,7 @@ const TransactionDetails: React.FC = () => {
   const [transaction, setTransaction] = useState<TransactionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -93,10 +96,8 @@ const TransactionDetails: React.FC = () => {
   };
 
   const handleDownloadReceipt = async () => {
+    setIsDownloading(true);
     try {
-      console.log('Downloading receipt for transaction:', transaction.transaction.id);
-      console.log('API Base URL:', import.meta.env.VITE_API_URL);
-
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/transactions/${transaction.transaction.id}/receipt`, 
         { 
@@ -104,91 +105,62 @@ const TransactionDetails: React.FC = () => {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Accept': 'application/pdf'
-          },
-          // Explicitly handle various status codes
-          validateStatus: function (status) {
-            return status >= 200 && status < 300; // Only accept successful responses
           }
         }
       );
 
-      // Detailed logging of response
-      console.log('Receipt Response Details:', {
-        status: response.status,
-        contentType: response.headers['content-type'],
-        contentLength: response.headers['content-length']
-      });
-
-      // Validate PDF content type
-      if (response.headers['content-type'] !== 'application/pdf') {
-        console.error('Invalid content type:', response.headers['content-type']);
-        toast.error('Download Failed', {
-          description: 'Received an invalid file type'
-        });
-        return;
-      }
-
-      // Create a blob with explicit PDF type
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      
-      // Validate blob size
-      if (blob.size === 0) {
-        console.error('Empty PDF received');
-        toast.error('Download Failed', {
-          description: 'Received an empty PDF file'
-        });
-        return;
-      }
-
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
-      
-      // Create a link element
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `transaction-${transaction.transaction.id}-receipt.pdf`;
-      
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Revoke the blob URL
-      window.URL.revokeObjectURL(url);
-
-      // Success toast
-      toast.success('Receipt Downloaded', {
-        description: `Transaction ${transaction.transaction.id} receipt downloaded`
-      });
-
-    } catch (error) {
-      console.error('Receipt Download Error:', error);
-      
-      // Comprehensive error handling
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          // Server responded with an error
-          console.error('Server Error Response:', error.response.data);
-          toast.error('Download Failed', {
-            description: error.response.data.details || 'Unable to download receipt'
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
           });
-        } else if (error.request) {
-          // Request made but no response received
-          toast.error('Network Error', {
-            description: 'No response from server. Check your connection.'
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `transaction-${transaction.transaction.id}-receipt.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
           });
-        } else {
-          // Something happened in setting up the request
-          toast.error('Download Error', {
-            description: 'An unexpected error occurred'
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Receipt Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
           });
         }
       } else {
-        // Non-Axios error
-        toast.error('Unexpected Error', {
-          description: 'An unknown error prevented receipt download'
-        });
+        // Web browser handling remains the same
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `transaction-${transaction.transaction.id}-receipt.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success('Receipt Downloaded');
       }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Download Failed');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -364,9 +336,19 @@ const TransactionDetails: React.FC = () => {
                 variant="outline" 
                 className="w-full" 
                 onClick={handleDownloadReceipt}
+                disabled={isDownloading}
               >
-                <FileText className="h-4 w-4 mr-2" />
-                Download Receipt
+                {isDownloading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download Receipt
+                  </>
+                )}
               </Button>
             </div>
           </div>
