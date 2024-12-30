@@ -33,7 +33,8 @@ import {
   Key,
   Check,
   ClipboardList,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 import { formatCurrency, comparePlans } from "@/lib/utils";
 import { workstationService } from "@/services/workstationService";
@@ -51,6 +52,9 @@ import { useNavigate } from "react-router-dom";
 import PagePreloader from "@/components/ui/PagePreloader";
 import { Dialog, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { settingsService } from "@/services/settingsService";
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
+import axios from 'axios';
 
 const CANCELLATION_REASONS = [
   { label: 'No longer need the service', value: 'no_need' },
@@ -121,6 +125,7 @@ const Subscription = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -367,17 +372,90 @@ const Subscription = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            disabled={isDownloading}
                             onClick={async () => {
                               try {
-                                await workstationService.downloadAccessCard(subscription.id);
+                                setIsDownloading(true);
+                                const response = await axios.get(
+                                  `${import.meta.env.VITE_API_URL}/workstation/subscriptions/${subscription.id}/access-card`,
+                                  {
+                                    responseType: 'blob',
+                                    headers: {
+                                      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                      'Accept': 'image/jpeg'
+                                    }
+                                  }
+                                );
+
+                                if (platformService.isNative()) {
+                                  try {
+                                    const blob = new Blob([response.data], { type: 'image/jpeg' });
+                                    const reader = new FileReader();
+                                    const base64Promise = new Promise<string>((resolve, reject) => {
+                                      reader.onload = () => resolve(reader.result as string);
+                                      reader.onerror = reject;
+                                      reader.readAsDataURL(blob);
+                                    });
+                                    
+                                    const base64Data = await base64Promise;
+                                    const base64String = base64Data.split(',')[1];
+                                    const fileName = `access-card-${subscription.id}-${Date.now()}.jpg`;
+
+                                    // Save file
+                                    const savedFile = await Filesystem.writeFile({
+                                      path: `Download/${fileName}`,
+                                      data: base64String,
+                                      directory: Directory.ExternalStorage,
+                                      recursive: true
+                                    });
+
+                                    console.log('File saved at:', savedFile.uri);
+                                    toast.success('Access Card Downloaded', {
+                                      description: 'File saved to Download folder'
+                                    });
+
+                                  } catch (error) {
+                                    console.error('Save error:', error);
+                                    toast.error('Save Failed', {
+                                      description: error.message || 'Could not save file'
+                                    });
+                                  }
+                                } else {
+                                  // Web browser handling
+                                  const blob = new Blob([response.data], { type: 'image/jpeg' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = `access-card-${subscription.id}-${Date.now()}.jpg`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                  
+                                  toast.success('Access Card Downloaded');
+                                }
                               } catch (error) {
-                                toast.error('Failed to download access card');
+                                console.error('Failed to download access card:', error);
+                                toast.error('Failed to download access card', {
+                                  description: error instanceof Error ? error.message : 'Please try again later'
+                                });
+                              } finally {
+                                setIsDownloading(false);
                               }
                             }}
                             className="w-full"
                           >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download Access Card
+                            {isDownloading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Downloading...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download Access Card
+                              </>
+                            )}
                           </Button>
                         ) : (
                           <p className="text-sm text-muted-foreground text-center">
