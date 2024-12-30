@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import useAuthStore from '@/store/useAuthStore';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from 'sonner';
@@ -29,6 +29,11 @@ import BusinessDashboard from "@/components/dashboard/BusinessDashboard";
 import BusinessActivities from "@/pages/business/BusinessActivities";
 import { lazy } from "react";
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { platformService } from './services/platformService';
+import { App as CapacitorApp } from '@capacitor/app';
+import { StatusBar } from '@capacitor/status-bar';
+import { Keyboard } from '@capacitor/keyboard';
+import { Browser } from '@capacitor/browser';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -97,6 +102,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppContent = () => {
   const { isLoading } = useLoading();
+
+  useEffect(() => {
+    if (platformService.isNative()) {
+      // Handle back button
+      CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        if (!canGoBack) {
+          CapacitorApp.exitApp();
+        } else {
+          window.history.back();
+        }
+      });
+
+      // Handle hardware back button
+      document.addEventListener('ionBackButton', (ev: any) => {
+        ev.detail.register(10, () => {
+          if (!window.history.length) {
+            CapacitorApp.exitApp();
+          } else {
+            window.history.back();
+          }
+        });
+      });
+    }
+  }, []);
 
   return (
     <Router>
@@ -250,6 +279,72 @@ const App = () => {
     initializeApp();
   }, [isAuthenticated, initialize]);
 
+  useEffect(() => {
+    platformService.initializeApp();
+  }, []);
+
+  useEffect(() => {
+    const initApp = async () => {
+      if (platformService.isNative()) {
+        try {
+          await StatusBar.setBackgroundColor({ color: '#ffffff' });
+          await StatusBar.setStyle({ style: Style.Dark });
+          await Keyboard.setAccessoryBarVisible({ isVisible: false });
+        } catch (error) {
+          console.error('Error initializing native features:', error);
+        }
+      }
+    };
+
+    initApp();
+  }, []);
+
+  useEffect(() => {
+    // Handle deep links
+    CapacitorApp.addListener('appUrlOpen', async (data: { url: string }) => {
+      console.log('App opened with URL:', data.url);
+      
+      // Parse the URL
+      const slug = data.url.split('.org').pop();
+      if (slug) {
+        // Navigate to the route
+        window.location.hash = slug;
+      }
+    });
+
+    // Handle external links
+    const handleExternalLinks = () => {
+      document.addEventListener('click', async (e) => {
+        const target = e.target as HTMLAnchorElement;
+        if (target.tagName === 'A' && target.href) {
+          e.preventDefault();
+
+          // Check if it's an internal or external link
+          const isInternal = target.href.includes('192.168.96.190:8000') || 
+                           target.href.startsWith('/') ||
+                           target.href.startsWith('#');
+
+          if (isInternal) {
+            // Handle internal navigation
+            window.location.href = target.href;
+          } else {
+            // Open external links in the in-app browser
+            await Browser.open({
+              url: target.href,
+              presentationStyle: 'popover',
+              toolbarColor: '#ffffff',
+              windowName: '_self'
+            });
+          }
+        }
+      });
+    };
+
+    if (platformService.isNative()) {
+      handleExternalLinks();
+    }
+  }, []);
+
   return (
     <ThemeStoreProvider>
       <ThemeContextProvider>
@@ -267,6 +362,20 @@ const App = () => {
       </ThemeContextProvider>
     </ThemeStoreProvider>
   );
+};
+
+// Update your payment integration to use the in-app browser
+const handlePaystackPayment = async (authorizationUrl: string) => {
+  if (platformService.isNative()) {
+    await Browser.open({
+      url: authorizationUrl,
+      presentationStyle: 'popover',
+      toolbarColor: '#ffffff',
+      windowName: '_self'
+    });
+  } else {
+    window.location.href = authorizationUrl;
+  }
 };
 
 export default App;

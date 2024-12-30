@@ -45,7 +45,7 @@ const NotificationBadge = () => (
 );
 
 const testApiClient = axios.create({
-  baseURL: 'http://192.168.43.190:8000/api',
+  baseURL: 'http://192.168.96.190:8000/api',
   withCredentials: true
 });
 

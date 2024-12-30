@@ -10,6 +10,8 @@ import { motion } from 'framer-motion';
 import { cn } from "@/lib/utils";
 import axios from 'axios'; // Import axios
 import { AlertTriangle, XCircle } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
+import { platformService } from '@/services/platformService';
 
 // Explicitly define the component with a named function
 export default function PaymentConfirmation(): React.JSX.Element {
@@ -146,7 +148,8 @@ export default function PaymentConfirmation(): React.JSX.Element {
   const handlePaystackPayment = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/wallet/initiate-paystack-payment`, 
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/wallet/initiate-paystack-payment`, 
         { amount: parseFloat(amount) },
         {
           headers: {
@@ -159,8 +162,17 @@ export default function PaymentConfirmation(): React.JSX.Element {
       // Log the response for debugging
       console.log('Paystack Initialization Response:', response.data);
 
-      // Open Paystack checkout in the same window
-      window.location.href = response.data.authorization_url;
+      // Use Browser plugin for mobile app, window.location for web
+      if (platformService.isNative()) {
+        await Browser.open({
+          url: response.data.authorization_url,
+          presentationStyle: 'popover',
+          toolbarColor: '#ffffff',
+          windowName: '_self'
+        });
+      } else {
+        window.location.href = response.data.authorization_url;
+      }
     } catch (error) {
       console.error('Paystack Payment Initialization Error:', error);
       toast.error('Failed to initiate payment. Please try again.');

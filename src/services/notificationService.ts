@@ -13,7 +13,7 @@ class NotificationService {
         this.pusher = new Pusher('2f14ebc513254579c12a', {
             cluster: 'eu',
             forceTLS: true,
-            authEndpoint: 'http://192.168.43.190:8000/api/broadcasting/auth',
+            authEndpoint: 'http://192.168.96.190:8000/api/broadcasting/auth',
             auth: {
                 headers: {
                     'Authorization': `Bearer ${token}`,
