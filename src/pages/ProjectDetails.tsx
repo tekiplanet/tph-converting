@@ -139,6 +139,7 @@ function ProjectDetails() {
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
   const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
   const [isFileDownloading, setIsFileDownloading] = useState<string | null>(null);
+  const [isViewingReceipt, setIsViewingReceipt] = useState<string | null>(null);
 
   console.log('Full location:', location);
   console.log('All params:', useParams());
@@ -291,6 +292,7 @@ function ProjectDetails() {
   // Add this function to handle receipt viewing
   const handleViewReceipt = async (invoiceId: string) => {
     try {
+      setIsViewingReceipt(invoiceId);
       setIsLoadingReceipt(true);
       const response = await apiClient.get(`/invoices/${invoiceId}/receipt`);
       
@@ -303,37 +305,75 @@ function ProjectDetails() {
       toast.error(error.response?.data?.message || 'Failed to load receipt');
     } finally {
       setIsLoadingReceipt(false);
+      setIsViewingReceipt(null);
     }
   };
 
   // Add this function to handle receipt download
   const handleDownloadReceipt = async (invoiceId: string) => {
+    setIsDownloadingReceipt(true);
     try {
-      setIsDownloadingReceipt(true);
-      const response = await axios({
-        url: `${import.meta.env.VITE_API_URL}/invoices/${invoiceId}/receipt/download`,
-        method: 'GET',
-        responseType: 'blob',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Accept': 'application/pdf'
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/invoices/${invoiceId}/receipt/download`,
+        {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Accept': 'application/pdf'
+          }
         }
-      });
+      );
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Receipt_${invoiceId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success('Receipt downloaded successfully');
-    } catch (error: any) {
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `receipt-${invoiceId}-${Date.now()}.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Receipt Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
+          });
+        }
+      } else {
+        // Web browser handling
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `receipt-${invoiceId}-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success('Receipt Downloaded');
+      }
+    } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download receipt');
+      toast.error('Download Failed');
     } finally {
       setIsDownloadingReceipt(false);
     }
@@ -656,24 +696,59 @@ function ProjectDetails() {
                             className="shrink-0 h-8 w-8"
                             disabled={isFileDownloading === file.id}
                             onClick={async () => {
-                                try {
-                                    setIsFileDownloading(file.id);
-                                    const blob = await projectService.downloadFile(project.id, file.id);
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = file.name;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    window.URL.revokeObjectURL(url);
-                                    document.body.removeChild(a);
-                                    toast.success('File downloaded successfully');
-                                } catch (error) {
-                                    console.error('Download failed:', error);
-                                    toast.error('Failed to download file');
-                                } finally {
-                                    setIsFileDownloading(null);
+                              try {
+                                setIsFileDownloading(file.id);
+                                const blob = await projectService.downloadFile(project.id, file.id);
+                                
+                                if (platformService.isNative()) {
+                                  try {
+                                    const reader = new FileReader();
+                                    const base64Promise = new Promise<string>((resolve, reject) => {
+                                      reader.onload = () => resolve(reader.result as string);
+                                      reader.onerror = reject;
+                                      reader.readAsDataURL(blob);
+                                    });
+                                    
+                                    const base64Data = await base64Promise;
+                                    const base64String = base64Data.split(',')[1];
+                                    
+                                    // Save file with original name and extension
+                                    const savedFile = await Filesystem.writeFile({
+                                      path: `Download/${file.name}`,
+                                      data: base64String,
+                                      directory: Directory.ExternalStorage,
+                                      recursive: true
+                                    });
+
+                                    console.log('File saved at:', savedFile.uri);
+                                    toast.success('File Downloaded', {
+                                      description: 'File saved to Download folder'
+                                    });
+
+                                  } catch (error) {
+                                    console.error('Save error:', error);
+                                    toast.error('Save Failed', {
+                                      description: error.message || 'Could not save file'
+                                    });
+                                  }
+                                } else {
+                                  // Web browser handling
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = file.name;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                  document.body.removeChild(a);
+                                  toast.success('File Downloaded');
                                 }
+                              } catch (error) {
+                                console.error('Download failed:', error);
+                                toast.error('Failed to download file');
+                              } finally {
+                                setIsFileDownloading(null);
+                              }
                             }}
                           >
                             {isFileDownloading === file.id ? (
@@ -767,9 +842,19 @@ function ProjectDetails() {
                                     size="sm"
                                     className="gap-2"
                                     onClick={() => handleViewReceipt(invoice.id)}
+                                    disabled={isViewingReceipt === invoice.id}
                                   >
-                                    <FileText className="h-4 w-4" />
-                                    View Receipt
+                                    {isViewingReceipt === invoice.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FileText className="h-4 w-4" />
+                                        View Receipt
+                                      </>
+                                    )}
                                   </Button>
                                 )}
                               </div>

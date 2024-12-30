@@ -211,17 +211,7 @@ function ProjectsList() {
                           </p>
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuItem>Edit Project</DropdownMenuItem>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-2 space-y-4">
