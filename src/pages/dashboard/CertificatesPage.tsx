@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { 
   Download, Search, Award, Share2, Calendar,
   CheckCircle, Trophy, Medal, Star, Sparkles,
-  GraduationCap, BookOpen
+  GraduationCap, BookOpen, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { certificateService, type Certificate } from "@/services/certificateService";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
+import axios from 'axios';
 
 export default function CertificatesPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -40,20 +43,71 @@ export default function CertificatesPage() {
 
   // Download certificate mutation
   const downloadMutation = useMutation({
-    mutationFn: certificateService.downloadCertificate,
-    onSuccess: (data, id) => {
-      const url = window.URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `certificate-${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Certificate downloaded successfully');
+    mutationFn: async (certificateId: string) => {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/certificates/${certificateId}/download`,
+        {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Accept': 'application/pdf'
+          }
+        }
+      );
+
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `certificate-${certificateId}-${Date.now()}.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Certificate Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
+          });
+        }
+      } else {
+        // Web browser handling
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `certificate-${certificateId}-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Certificate Downloaded');
+      }
     },
-    onError: () => {
-      toast.error('Failed to download certificate');
+    onError: (error) => {
+      console.error('Download failed:', error);
+      toast.error('Failed to download certificate', {
+        description: error instanceof Error ? error.message : 'Please try again later'
+      });
     }
   });
 
@@ -291,7 +345,11 @@ export default function CertificatesPage() {
                               onClick={() => downloadMutation.mutate(certificate.id)}
                               disabled={downloadMutation.isPending}
                             >
-                              <Download className="h-4 w-4" />
+                              {downloadMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
