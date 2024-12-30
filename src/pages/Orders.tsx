@@ -41,6 +41,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { settingsService } from '@/services/settingsService';
 import { storeService } from '@/services/storeService';
 import { toast } from 'sonner';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
+import axios from 'axios';
 
 const statusColors = {
   pending: 'bg-yellow-500/10 text-yellow-600',
@@ -277,8 +280,64 @@ export default function Orders() {
                           onClick={async () => {
                             try {
                               setDownloadingInvoice(order.id);
-                              await storeService.downloadInvoice(order.id);
-                              toast.success('Invoice downloaded successfully');
+                              const response = await axios.get(
+                                `${import.meta.env.VITE_API_URL}/orders/${order.id}/invoice`, 
+                                {
+                                  responseType: 'blob',
+                                  headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                    'Accept': 'application/pdf'
+                                  }
+                                }
+                              );
+
+                              if (platformService.isNative()) {
+                                try {
+                                  const blob = new Blob([response.data], { type: 'application/pdf' });
+                                  const reader = new FileReader();
+                                  const base64Promise = new Promise<string>((resolve, reject) => {
+                                    reader.onload = () => resolve(reader.result as string);
+                                    reader.onerror = reject;
+                                    reader.readAsDataURL(blob);
+                                  });
+                                  
+                                  const base64Data = await base64Promise;
+                                  const base64String = base64Data.split(',')[1];
+                                  const fileName = `order-invoice-${order.id}-${Date.now()}.pdf`;
+
+                                  // Save file
+                                  const savedFile = await Filesystem.writeFile({
+                                    path: `Download/${fileName}`,
+                                    data: base64String,
+                                    directory: Directory.ExternalStorage,
+                                    recursive: true
+                                  });
+
+                                  console.log('File saved at:', savedFile.uri);
+                                  toast.success('Invoice Downloaded', {
+                                    description: 'File saved to Download folder'
+                                  });
+
+                                } catch (error) {
+                                  console.error('Save error:', error);
+                                  toast.error('Save Failed', {
+                                    description: error.message || 'Could not save file'
+                                  });
+                                }
+                              } else {
+                                // Web browser handling
+                                const blob = new Blob([response.data], { type: 'application/pdf' });
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `order-invoice-${order.id}-${Date.now()}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                                
+                                toast.success('Invoice Downloaded');
+                              }
                             } catch (error) {
                               console.error('Failed to download invoice:', error);
                               toast.error('Failed to download invoice', {
@@ -290,11 +349,16 @@ export default function Orders() {
                           }}
                         >
                           {downloadingInvoice === order.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
                           ) : (
-                            <Download className="h-4 w-4" />
+                            <>
+                              <Download className="h-4 w-4" />
+                              Invoice
+                            </>
                           )}
-                          {downloadingInvoice === order.id ? 'Generating...' : 'Invoice'}
                         </Button>
                         <Button 
                           variant="outline" 

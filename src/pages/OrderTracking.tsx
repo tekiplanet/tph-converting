@@ -21,6 +21,9 @@ import { apiClient } from '@/lib/axios';
 import { settingsService } from '@/services/settingsService';
 import { toast } from 'sonner';
 import { storeService } from '@/services/storeService';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
+import axios from 'axios';
 
 const timelineVariants = {
   hidden: { opacity: 0 },
@@ -289,8 +292,64 @@ export default function OrderTracking() {
                     onClick={async () => {
                       try {
                         setDownloadingInvoice(true);
-                        await storeService.downloadInvoice(orderId!);
-                        toast.success('Invoice downloaded successfully');
+                        const response = await axios.get(
+                          `${import.meta.env.VITE_API_URL}/orders/${orderId}/invoice`, 
+                          {
+                            responseType: 'blob',
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                              'Accept': 'application/pdf'
+                            }
+                          }
+                        );
+
+                        if (platformService.isNative()) {
+                          try {
+                            const blob = new Blob([response.data], { type: 'application/pdf' });
+                            const reader = new FileReader();
+                            const base64Promise = new Promise<string>((resolve, reject) => {
+                              reader.onload = () => resolve(reader.result as string);
+                              reader.onerror = reject;
+                              reader.readAsDataURL(blob);
+                            });
+                            
+                            const base64Data = await base64Promise;
+                            const base64String = base64Data.split(',')[1];
+                            const fileName = `order-invoice-${orderId}-${Date.now()}.pdf`;
+
+                            // Save file
+                            const savedFile = await Filesystem.writeFile({
+                              path: `Download/${fileName}`,
+                              data: base64String,
+                              directory: Directory.ExternalStorage,
+                              recursive: true
+                            });
+
+                            console.log('File saved at:', savedFile.uri);
+                            toast.success('Invoice Downloaded', {
+                              description: 'File saved to Download folder'
+                            });
+
+                          } catch (error) {
+                            console.error('Save error:', error);
+                            toast.error('Save Failed', {
+                              description: error.message || 'Could not save file'
+                            });
+                          }
+                        } else {
+                          // Web browser handling
+                          const blob = new Blob([response.data], { type: 'application/pdf' });
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = `order-invoice-${orderId}-${Date.now()}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.URL.revokeObjectURL(url);
+                          
+                          toast.success('Invoice Downloaded');
+                        }
                       } catch (error) {
                         console.error('Failed to download invoice:', error);
                         toast.error('Failed to download invoice', {
@@ -302,11 +361,16 @@ export default function OrderTracking() {
                     }}
                   >
                     {downloadingInvoice ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
                     ) : (
-                      <Download className="h-4 w-4" />
+                      <>
+                        <Download className="h-4 w-4" />
+                        Download Invoice
+                      </>
                     )}
-                    {downloadingInvoice ? 'Generating...' : 'Download Invoice'}
                   </Button>
                 </div>
               </div>
