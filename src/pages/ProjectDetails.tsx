@@ -44,6 +44,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiClient } from '@/lib/api-client';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { platformService } from '@/services/platformService';
 
 // Helper functions
 function getFileIcon(fileType: string) {
@@ -183,42 +185,71 @@ function ProjectDetails() {
 
   // Add this function to handle PDF download
   const handleDownloadInvoice = async (invoiceId: string) => {
+    setIsDownloading(invoiceId);
     try {
-        setIsDownloading(invoiceId);
-        
-        const response = await axios({
-            url: `${import.meta.env.VITE_API_URL}/invoices/${invoiceId}/download`,
-            method: 'GET',
-            responseType: 'blob', // Important for handling PDF
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Accept': 'application/pdf'
-            }
-        });
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/invoices/${invoiceId}/download`, 
+        { 
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Accept': 'application/pdf'
+          }
+        }
+      );
 
-        // Create blob from response
+      if (platformService.isNative()) {
+        try {
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Data = await base64Promise;
+          const base64String = base64Data.split(',')[1];
+          const fileName = `invoice-${invoiceId}-${Date.now()}.pdf`;
+
+          // Save file
+          const savedFile = await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64String,
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+
+          console.log('File saved at:', savedFile.uri);
+          toast.success('Invoice Downloaded', {
+            description: 'File saved to Download folder'
+          });
+
+        } catch (error) {
+          console.error('Save error:', error);
+          toast.error('Save Failed', {
+            description: error.message || 'Could not save file'
+          });
+        }
+      } else {
+        // Web browser handling
         const blob = new Blob([response.data], { type: 'application/pdf' });
-        
-        // Create download link
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Invoice_${invoiceId}.pdf`;
-        
-        // Trigger download
+        link.download = `invoice-${invoiceId}-${Date.now()}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Cleanup
         window.URL.revokeObjectURL(url);
-        
-        toast.success('Invoice downloaded successfully');
-    } catch (error: any) {
-        console.error('Download error:', error);
-        toast.error(error.response?.data?.message || 'Failed to download invoice');
+
+        toast.success('Invoice Downloaded');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Download Failed');
     } finally {
-        setIsDownloading(null);
+      setIsDownloading(null);
     }
   };
 
