@@ -35,6 +35,7 @@ import { StatusBar } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { Browser } from '@capacitor/browser';
 import DebugLogger from '@/components/DebugLogger';
+import Onboarding from '@/pages/Onboarding';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -103,6 +104,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppContent = () => {
   const { isLoading } = useLoading();
+  const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
 
   useEffect(() => {
     if (platformService.isNative()) {
@@ -133,6 +135,12 @@ const AppContent = () => {
       {isLoading && <PagePreloader />}
       <Suspense fallback={<PagePreloader />}>
         <Routes>
+          <Route 
+            path="/onboarding" 
+            element={
+              !hasSeenOnboarding ? <Onboarding /> : <Navigate to="/login" replace />
+            } 
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route 
@@ -220,7 +228,16 @@ const AppContent = () => {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/courses/:courseId/manage" element={<CourseManagement />} />
           <Route path="/services" element={<Services />} />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route 
+            path="/" 
+            element={
+              !hasSeenOnboarding ? (
+                <Navigate to="/onboarding" replace />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            } 
+          />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/*" element={
             <AdminGuard>
@@ -253,6 +270,7 @@ const AppContent = () => {
 
 const App = () => {
   const { isAuthenticated, initialize, theme } = useAuthStore();
+  const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
 
   // Apply theme on component mount and when theme changes
   React.useEffect(() => {
