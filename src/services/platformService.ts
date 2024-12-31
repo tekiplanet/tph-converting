@@ -4,35 +4,53 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 
-export const platformService = {
-  isNative: () => Capacitor.isNativePlatform(),
-  
-  getPlatform: () => Capacitor.getPlatform(),
+class PlatformService {
+  isNative(): boolean {
+    return Capacitor.isNativePlatform();
+  }
 
-  initializeApp: async () => {
-    if (Capacitor.isNativePlatform()) {
-      // Hide splash screen
-      await SplashScreen.hide();
+  getPlatform(): string {
+    return Capacitor.getPlatform();
+  }
 
-      // Set status bar style
-      await StatusBar.setStyle({ style: Style.Dark });
+  async initializeApp(): Promise<void> {
+    if (this.isNative()) {
+      try {
+        // Hide splash screen
+        await SplashScreen.hide();
 
-      // Add app state change listener
-      App.addListener('appStateChange', ({ isActive }) => {
-        console.log('App state changed. Is active?:', isActive);
-      });
-    }
-  },
+        // Set status bar style
+        await StatusBar.setStyle({ style: Style.Dark });
 
-  vibrate: async () => {
-    if (Capacitor.isNativePlatform()) {
-      await Haptics.impact({ style: ImpactStyle.Light });
-    }
-  },
-
-  exitApp: async () => {
-    if (Capacitor.isNativePlatform()) {
-      await App.exitApp();
+        // Add app state change listener
+        App.addListener('appStateChange', ({ isActive }) => {
+          console.log('App state changed. Is active?:', isActive);
+        });
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
     }
   }
-}; 
+
+  async vibrate(): Promise<void> {
+    if (this.isNative()) {
+      try {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } catch (error) {
+        console.error('Error with haptics:', error);
+      }
+    }
+  }
+
+  async exitApp(): Promise<void> {
+    if (this.isNative()) {
+      try {
+        await App.exitApp();
+      } catch (error) {
+        console.error('Error exiting app:', error);
+      }
+    }
+  }
+}
+
+export const platformService = new PlatformService(); 

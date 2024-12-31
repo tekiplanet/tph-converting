@@ -37,6 +37,9 @@ import { Browser } from '@capacitor/browser';
 import DebugLogger from '@/components/DebugLogger';
 import Onboarding from '@/pages/Onboarding';
 import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
+import ProductRequest from '@/pages/ProductRequest';
+import MyRequests from '@/pages/MyRequests';
+import ProductRequestDetails from '@/pages/ProductRequestDetails';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -230,6 +233,9 @@ const AppContent = () => {
             <Route path="activities" element={<ActivitiesPage />} />
             <Route path="academy/certificates" element={<CertificatesPage />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="product-request" element={<ProductRequest />} />
+            <Route path="my-requests" element={<MyRequests />} />
+            <Route path="product-request/:id" element={<ProductRequestDetails />} />
           </Route>
 
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

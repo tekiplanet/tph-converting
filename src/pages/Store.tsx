@@ -10,6 +10,7 @@ import {
   Star,
   ChevronRight,
   Filter,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { formatPrice } from '@/lib/formatters';
 import { ProductCard } from '@/components/ProductCard';
+import { platformService } from '@/services/platformService';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -354,7 +356,28 @@ export default function Store() {
                 // Add loading skeleton here
                 <div>Loading...</div>
               ) : !productsData?.products.data || productsData.products.data.length === 0 ? (
-                <div>No products found</div>
+                <div className="col-span-full flex flex-col items-center justify-center p-8 text-center">
+                  <div className="mb-4">
+                    <img 
+                      src="/images/no-results.svg" 
+                      alt="No results" 
+                      className="w-48 h-48 opacity-80"
+                    />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Can't find what you're looking for?
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Make a request and we'll make it available for you
+                  </p>
+                  <Button 
+                    onClick={() => navigate('/dashboard/product-request')}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Make Product Request
+                  </Button>
+                </div>
               ) : (
                 productsData.products.data.map((product) => (
                   <ProductCard 
