@@ -124,6 +124,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
                   error={errors.password?.message}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <Button 
+                    variant="link" 
+                    className="text-primary p-0 h-auto font-normal"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Forgot your password?
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {error && (

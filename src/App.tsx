@@ -82,6 +82,9 @@ const ActivitiesPage = React.lazy(() => import('@/pages/dashboard/ActivitiesPage
 const CertificatesPage = lazy(() => import("@/pages/dashboard/CertificatesPage"));
 const EmailVerification = React.lazy(() => import('@/pages/EmailVerification'));
 const TwoFactorAuth = React.lazy(() => import('@/pages/TwoFactorAuth'));
+const ForgotPassword = React.lazy(() => import('@/pages/ForgotPassword'));
+const VerifyCode = React.lazy(() => import('@/pages/VerifyCode'));
+const ResetPassword = React.lazy(() => import('@/pages/ResetPassword'));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -144,6 +147,9 @@ const AppContent = () => {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-code" element={<VerifyCode />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route 
             path="/verify-email" 
             element={
