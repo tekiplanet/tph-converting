@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PasswordInput } from './PasswordInput';
 
 interface LoginFormData {
   login: string;
@@ -79,9 +80,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               {...register('password', { 
                 required: 'Password is required',
                 minLength: {
@@ -89,10 +89,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
                   message: 'Password must be at least 8 characters'
                 }
               })}
+              error={errors.password?.message}
             />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
           </div>
 
           {error && (

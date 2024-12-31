@@ -104,6 +104,11 @@ export default function Onboarding() {
                   src={slides[currentSlide].image}
                   alt={slides[currentSlide].title}
                   className="w-full h-full object-contain p-6 rounded-3xl bg-card/50 backdrop-blur-sm shadow-xl ring-1 ring-primary/10"
+                  style={{
+                    borderRadius: 'inherit',  // This will inherit the rounded-3xl from parent
+                    maskImage: 'radial-gradient(white, black)', // Ensures border-radius works on Safari
+                    WebkitMaskImage: 'radial-gradient(white, black)' // For webkit browsers
+                  }}
                 />
               </div>
 

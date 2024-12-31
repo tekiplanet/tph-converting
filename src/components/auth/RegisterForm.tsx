@@ -13,6 +13,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { PasswordInput } from './PasswordInput';
 
 // Define account type options
 const ACCOUNT_TYPES = [
@@ -159,9 +160,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               {...register('password', { 
                 required: 'Password is required',
                 minLength: {
@@ -169,17 +169,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
                   message: 'Password must be at least 8 characters'
                 }
               })}
+              error={errors.password?.message}
             />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password_confirmation">Confirm Password</Label>
-            <Input
+            <PasswordInput
               id="password_confirmation"
-              type="password"
               {...register('password_confirmation', { 
                 required: 'Please confirm your password',
                 validate: (val: string) => {
@@ -191,10 +188,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit }) => {
                   }
                 }
               })}
+              error={errors.password_confirmation?.message}
             />
-            {errors.password_confirmation && (
-              <p className="text-sm text-red-500">{errors.password_confirmation.message}</p>
-            )}
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
