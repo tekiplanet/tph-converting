@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion, AnimatePresence, drag, PanInfo } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
@@ -29,99 +29,190 @@ const slides = [
 
 export default function Onboarding() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
   const navigate = useNavigate();
-  const [dragStart, setDragStart] = useState(0);
+  const controls = useAnimation();
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const dragDistance = info.offset.x;
-    const dragThreshold = 50; // minimum drag distance to trigger slide change
+  const backgroundControls = useAnimation();
+  const contentControls = useAnimation();
 
-    if (dragDistance > dragThreshold && currentSlide > 0) {
-      // Dragged right - go to previous slide
-      setCurrentSlide(prev => prev - 1);
-    } else if (dragDistance < -dragThreshold && currentSlide < slides.length - 1) {
-      // Dragged left - go to next slide
-      setCurrentSlide(prev => prev + 1);
-    }
-  };
+  useEffect(() => {
+    // Animate background gradient on slide change
+    backgroundControls.start({
+      opacity: [0, 1],
+      transition: { duration: 0.5 }
+    });
+  }, [currentSlide, backgroundControls]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentSlide === slides.length - 1) {
+      // Animate out
+      await contentControls.start({ 
+        opacity: 0,
+        y: -20,
+        transition: { duration: 0.3 }
+      });
       localStorage.setItem('hasSeenOnboarding', 'true');
       navigate('/login');
     } else {
+      await contentControls.start({ opacity: 0, x: -20 });
       setCurrentSlide(prev => prev + 1);
+      await contentControls.start({ opacity: 1, x: 0 });
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentSlide > 0) {
+      await contentControls.start({ opacity: 0, x: 20 });
       setCurrentSlide(prev => prev - 1);
+      await contentControls.start({ opacity: 1, x: 0 });
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+
+    const currentTouch = e.touches[0].clientX;
+    const diff = touchStart - currentTouch;
+
+    if (Math.abs(diff) > 50) { // Minimum swipe distance
+      if (diff > 0 && currentSlide < slides.length - 1) {
+        handleNext();
+      } else if (diff < 0 && currentSlide > 0) {
+        handlePrevious();
+      }
+      setTouchStart(0);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-background" />
+    <div 
+      className="min-h-screen bg-background overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
+      {/* Subtle gradient background */}
+      <motion.div 
+        animate={backgroundControls}
+        className="absolute inset-0 bg-gradient-to-b from-primary/5 to-background"
+        initial={{ opacity: 0 }}
+      />
 
       <div className="relative flex flex-col min-h-screen">
-        {/* Header with progress dots */}
+        {/* Progress dots */}
         <div className="pt-8 px-4">
           <div className="flex justify-center gap-2 mb-8">
             {slides.map((_, index) => (
-              <div
+              <motion.div
                 key={index}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentSlide 
-                    ? 'w-8 bg-primary' 
-                    : 'w-1.5 bg-primary/30'
-                }`}
+                className="h-1.5 rounded-full bg-primary/30"
+                animate={{
+                  width: index === currentSlide ? 32 : 6,
+                  opacity: index === currentSlide ? 1 : 0.3
+                }}
               />
             ))}
           </div>
         </div>
 
-        {/* Slides */}
-        <div className="flex-1 relative overflow-hidden">
-          <AnimatePresence mode="wait">
+        {/* Content */}
+        <motion.div 
+          className="flex-1 relative overflow-hidden px-4 pt-12"
+          animate={contentControls}
+          initial={{ opacity: 1, x: 0 }}
+        >
+          <div className="max-w-md mx-auto h-full flex flex-col items-center justify-center -mt-12">
+            {/* Image with floating animation */}
             <motion.div
-              key={currentSlide}
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              onDragEnd={handleDragEnd}
-              className="absolute inset-0 flex flex-col items-center justify-center p-8"
+              className="w-full max-w-[280px] aspect-square mb-8 relative"
+              animate={{ 
+                y: [0, -10, 0],
+              }}
+              transition={{ 
+                repeat: Infinity, 
+                duration: 3,
+                ease: "easeInOut"
+              }}
+              style={{ margin: '20px 0' }}
             >
-              {/* Image container with shadow and border */}
-              <div className="w-full max-w-md aspect-square mb-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent rounded-3xl" />
-                <img
-                  src={slides[currentSlide].image}
-                  alt={slides[currentSlide].title}
-                  className="w-full h-full object-contain p-6 rounded-3xl bg-card/50 backdrop-blur-sm shadow-xl ring-1 ring-primary/10"
-                  style={{
-                    borderRadius: 'inherit',  // This will inherit the rounded-3xl from parent
-                    maskImage: 'radial-gradient(white, black)', // Ensures border-radius works on Safari
-                    WebkitMaskImage: 'radial-gradient(white, black)' // For webkit browsers
-                  }}
-                />
+              {/* Background circles for decoration */}
+              <div className="absolute inset-0 -z-10">
+                <div className="absolute top-0 left-0 w-full h-full rounded-full bg-primary/5 animate-pulse" />
+                <div className="absolute top-4 left-4 w-full h-full rounded-full bg-primary/5" />
               </div>
 
-              {/* Content with gradient text */}
-              <h1 className="text-3xl font-bold text-center mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                {slides[currentSlide].title}
-              </h1>
-              <p className="text-center text-muted-foreground mb-8 max-w-md">
-                {slides[currentSlide].description}
-              </p>
+              {/* Main image container */}
+              <div className="relative w-full h-full rounded-full p-2 bg-gradient-to-b from-primary/10 via-primary/5 to-transparent backdrop-blur-sm">
+                <div className="w-full h-full rounded-full overflow-hidden ring-1 ring-primary/20 bg-card">
+                  <img
+                    src={slides[currentSlide].image}
+                    alt={slides[currentSlide].title}
+                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                    style={{
+                      objectFit: 'cover',
+                      transform: 'scale(1.1)', // Start slightly zoomed in
+                    }}
+                  />
+                </div>
+                
+                {/* Decorative ring */}
+                <div className="absolute -inset-0.5 rounded-full bg-gradient-to-b from-primary/20 to-transparent -z-10" />
+              </div>
+
+              {/* Floating dots decoration */}
+              <motion.div
+                className="absolute w-3 h-3 rounded-full bg-primary/30"
+                animate={{
+                  y: [0, -20, 0],
+                  x: [0, 10, 0],
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 3,
+                  ease: "easeInOut",
+                }}
+                style={{ top: '20%', right: '10%' }}
+              />
+              <motion.div
+                className="absolute w-2 h-2 rounded-full bg-primary/20"
+                animate={{
+                  y: [0, 20, 0],
+                  x: [0, -10, 0],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 2.5,
+                  ease: "easeInOut",
+                }}
+                style={{ bottom: '20%', left: '10%' }}
+              />
             </motion.div>
-          </AnimatePresence>
-        </div>
+
+            {/* Text content with animations */}
+            <motion.h1
+              className="text-3xl font-bold text-center mb-4 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {slides[currentSlide].title}
+            </motion.h1>
+            <motion.p
+              className="text-center text-muted-foreground mb-8 max-w-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {slides[currentSlide].description}
+            </motion.p>
+          </div>
+        </motion.div>
 
         {/* Navigation buttons */}
         <div className="p-8 space-y-4">
