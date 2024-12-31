@@ -73,7 +73,7 @@ const MobileCategoryPicker: React.FC<{
       >
         {selectedCategory ? (
           <div className="flex items-center gap-2">
-            {getLucideIcon(selectedCategory.icon)({ className: "h-4 w-4" })}
+            {React.createElement(getLucideIcon(selectedCategory.icon), { className: "h-4 w-4" })}
             <span>{selectedCategory.title}</span>
           </div>
         ) : (
@@ -169,13 +169,20 @@ const ServicesPage: React.FC = () => {
   };
 
   // Filter services based on search
-  const filteredServices = serviceCategories.filter(category =>
-    category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    category.subServices.some(service => 
-      service.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const filteredServices = serviceCategories.filter(category => {
+    // Check if category matches selected category
+    const matchesCategory = !selectedCategory || category.id === selectedCategory.id;
+
+    // Check if matches search query
+    const matchesSearch = 
+      category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      category.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      category.subServices.some(service => 
+        service.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    return matchesCategory && matchesSearch;
+  });
 
   if (isLoading) {
     return <PagePreloader />;
