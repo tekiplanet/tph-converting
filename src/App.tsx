@@ -36,6 +36,7 @@ import { Keyboard } from '@capacitor/keyboard';
 import { Browser } from '@capacitor/browser';
 import DebugLogger from '@/components/DebugLogger';
 import Onboarding from '@/pages/Onboarding';
+import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -379,21 +380,23 @@ const App = () => {
   }, []);
 
   return (
-    <ThemeStoreProvider>
-      <ThemeContextProvider>
-        <QueryClientProvider client={queryClient}>
-          <LoadingProvider>
-            <TooltipProvider>
-              <NotificationProvider>
-                <div className="min-h-screen transition-colors duration-300">
-                  <AppContent />
-                </div>
-              </NotificationProvider>
-            </TooltipProvider>
-          </LoadingProvider>
-        </QueryClientProvider>
-      </ThemeContextProvider>
-    </ThemeStoreProvider>
+    <ErrorBoundary>
+      <ThemeStoreProvider>
+        <ThemeContextProvider>
+          <QueryClientProvider client={queryClient}>
+            <LoadingProvider>
+              <TooltipProvider>
+                <NotificationProvider>
+                  <div className="min-h-screen transition-colors duration-300">
+                    <AppContent />
+                  </div>
+                </NotificationProvider>
+              </TooltipProvider>
+            </LoadingProvider>
+          </QueryClientProvider>
+        </ThemeContextProvider>
+      </ThemeStoreProvider>
+    </ErrorBoundary>
   );
 };
 

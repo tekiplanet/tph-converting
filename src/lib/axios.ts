@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
+  timeout: 10000,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -37,11 +38,22 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Handle connection errors
+    if (!error.response) {
+      window.dispatchEvent(new CustomEvent('api:connection-error', {
+        detail: {
+          message: 'Unable to connect to server. Please check your internet connection.'
+        }
+      }));
+    }
+    
+    // Handle authentication errors
     if (error.response?.status === 401) {
       // Clear auth state on 401
       localStorage.removeItem('token');
       useAuthStore.getState().logout();
     }
+    
     return Promise.reject(error);
   }
 );
