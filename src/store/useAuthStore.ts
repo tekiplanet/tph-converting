@@ -175,9 +175,20 @@ const useAuthStore = create<AuthState>(
         try {
           const response = await authService.login(login, password, code);
           
+          // Check if email verification is required
+          if (response.requires_verification) {
+            localStorage.setItem('token', response.token);
+            set({
+              user: response.user,
+              token: response.token,
+              isAuthenticated: true,
+              requiresVerification: true
+            });
+            return response;
+          }
+          
           // Check if 2FA is required
           if (response.requires_2fa) {
-            // Store the user's email instead of the login credential
             localStorage.setItem('pending_2fa_email', response.user?.email || '');
             
             set({
