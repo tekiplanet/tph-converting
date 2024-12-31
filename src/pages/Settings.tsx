@@ -67,8 +67,6 @@ interface SettingsItem {
 }
 
 const accountFormSchema = z.object({
-  first_name: z.string().min(2, "First name must be at least 2 characters"),
-  last_name: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
 });
 
@@ -140,8 +138,6 @@ const AccountSettingsForm = () => {
   const form = useForm<z.infer<typeof accountFormSchema>>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
-      first_name: user?.first_name || "",
-      last_name: user?.last_name || "",
       email: user?.email || "",
     },
   });
@@ -283,34 +279,34 @@ const AccountSettingsForm = () => {
                     </div>
 
         <div className="grid gap-4">
+          {/* Info Notice */}
+          <Card className="bg-muted/50 border-none">
+            <CardContent className="flex gap-2 p-4">
+              <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">
+                Some personal information can only be changed on request. To change your name or username, please contact support.
+              </p>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="first_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="last_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-                    </div>
+            <div className="space-y-2">
+              <Label>First Name</Label>
+              <Input 
+                value={user?.first_name || ''} 
+                disabled 
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Last Name</Label>
+              <Input 
+                value={user?.last_name || ''} 
+                disabled 
+                className="bg-muted"
+              />
+            </div>
+          </div>
 
           <FormField
             control={form.control}
@@ -326,18 +322,15 @@ const AccountSettingsForm = () => {
             )}
           />
 
-                    <div className="space-y-2">
+          <div className="space-y-2">
             <Label>Username</Label>
             <Input 
               value={user?.username || ''} 
               disabled 
               className="bg-muted"
             />
-            <p className="text-sm text-muted-foreground">
-              Username cannot be changed
-            </p>
-                    </div>
-                    </div>
+          </div>
+        </div>
 
         <Button 
           type="submit" 
