@@ -175,43 +175,20 @@ const useAuthStore = create<AuthState>(
         try {
           const response = await authService.login(login, password, code);
           
-          // Check if email verification is required
-          if (response.requires_verification) {
+          // Check if 2FA is required
+          if (response.requires_2fa) {
+            // Store the user's email instead of the login credential
+            localStorage.setItem('pending_2fa_email', response.user?.email || '');
+            
             set({
               user: response.user,
               token: response.token,
-              isAuthenticated: true,
-              requiresVerification: true
-            });
-            localStorage.setItem('token', response.token);
-            return response;
-          }
-
-          // Check if 2FA is required
-          if (response.requires_2fa) {
-            // Add debug logging
-            console.log('2FA Response:', response);
-            
-            // Store email from user object instead of login field
-            const userEmail = response.user?.email;
-            console.log('User email from response:', userEmail);
-            
-            if (!userEmail) {
-              console.error('No user email found in response');
-              throw new Error('Unable to proceed with 2FA verification');
-            }
-            
-            localStorage.setItem('pending_2fa_email', userEmail);
-            
-            set({
-              user: response.user,
               isAuthenticated: false,
               requiresVerification: false,
               requires_2fa: true
             });
-            
-            // Navigate to 2FA page
-            window.location.href = '/two-factor-auth';
+
+            window.location.hash = '#/two-factor-auth';
             return response;
           }
 
@@ -399,8 +376,8 @@ const useAuthStore = create<AuthState>(
               requires_2fa: true
             });
 
-            // Navigate to 2FA page
-            window.location.href = '/two-factor-auth';
+            // Change this line to use hash routing
+            window.location.hash = '#/two-factor-auth';
           } else {
             // If no 2FA, proceed as normal
             set({
