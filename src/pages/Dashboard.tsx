@@ -1079,7 +1079,9 @@ const Dashboard = ({ children }: { children?: React.ReactNode }) => {
           <div className="flex-1 overflow-y-auto bg-background">
             <main className="min-h-[calc(100vh-5rem)] mb-24 md:mb-0">
               <div className="container mx-auto px-3 py-0.5 md:px-4 md:py-1 max-w-7xl">
-                <Outlet />
+                <PullToRefresh onRefresh={handleRefresh}>
+                  <Outlet />
+                </PullToRefresh>
               </div>
             </main>
           </div>
