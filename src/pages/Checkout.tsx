@@ -638,7 +638,7 @@ export default function Checkout() {
                           <div>
                             <p>{item.product.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} × {formatPrice(item.unit_price, orderData.currency)}
+                              Qty: {item.quantity} × {formatPrice(item.product.price, orderData.currency)}
                             </p>
                           </div>
                           <p className="whitespace-nowrap">
