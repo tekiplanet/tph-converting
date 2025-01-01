@@ -27,6 +27,7 @@ import { storeService } from '@/services/storeService';
 import { formatPrice } from '@/lib/formatters';
 import { toast } from "sonner";
 import { queryClient } from '@/lib/queryClient';
+import { CouponInput } from '@/components/checkout/CouponInput';
 
 const steps = [
   { id: 'shipping', title: 'Shipping' },
@@ -44,6 +45,12 @@ export default function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuthStore();
   const [orderData, setOrderData] = useState<any>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    type: 'fixed' | 'percentage';
+    value: number;
+  } | null>(null);
 
   // Fetch cart data
   const { data: cartData, isLoading } = useQuery({
@@ -95,7 +102,7 @@ export default function Checkout() {
   // Calculate totals
   const subtotal = cartData.totals.current;
   const shippingCost = selectedShippingMethod?.rate ?? 0;
-  const total = subtotal + shippingCost;
+  const total = subtotal + shippingCost - (appliedCoupon?.discount ?? 0);
 
   const handleShippingSubmit = () => {
     if (!selectedAddress) {
@@ -135,6 +142,7 @@ export default function Checkout() {
         shipping_address_id: selectedAddressId!,
         shipping_method_id: selectedShippingMethodId!,
         payment_method: 'wallet',
+        coupon_code: appliedCoupon?.code
       });
 
       setOrderData(response.order);
@@ -412,18 +420,63 @@ export default function Checkout() {
                   </div>
 
                   {/* Cost Breakdown */}
-                  <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                    <h3 className="font-semibold">Cost Breakdown</h3>
-                    <div className="space-y-2">
+                  <div className="bg-card rounded-lg p-6">
+                    <div className="space-y-4">
+                      {cartData.items.map((item) => (
+                        <div key={item.product.id} className="flex gap-4">
+                          <img
+                            src={item.product.images[0]}
+                            alt={item.product.name}
+                            className="w-16 h-16 object-cover rounded-md"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium">{item.product.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Quantity: {item.quantity}
+                            </p>
+                            <p className="font-medium">
+                              {formatPrice(item.product.price * item.quantity, cartData.currency)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="border-t pt-4 mb-4">
+                      <CouponInput 
+                        onApply={setAppliedCoupon}
+                        disabled={isProcessing}
+                        appliedCoupon={appliedCoupon}
+                      />
+                    </div>
+
+                    <div className="border-t pt-4 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Subtotal</span>
+                        <span className="text-muted-foreground">Subtotal</span>
                         <span>{formatPrice(subtotal, cartData.currency)}</span>
                       </div>
+
+                      {appliedCoupon && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Discount</span>
+                          <span className="text-green-600">
+                            -{formatPrice(appliedCoupon.discount, cartData.currency)}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between text-sm">
-                        <span>Shipping</span>
+                        <span className="text-muted-foreground">
+                          Shipping
+                          {selectedShippingMethod && (
+                            <span className="text-xs block">
+                              ({selectedShippingMethod.name})
+                            </span>
+                          )}
+                        </span>
                         <span>{formatPrice(shippingCost, cartData.currency)}</span>
                       </div>
-                      <div className="flex justify-between font-bold pt-2 border-t">
+                      <div className="flex justify-between font-bold pt-2">
                         <span>Total</span>
                         <span>{formatPrice(total, cartData.currency)}</span>
                       </div>
@@ -585,10 +638,12 @@ export default function Checkout() {
                           <div>
                             <p>{item.product.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity}
+                              Qty: {item.quantity} × {formatPrice(item.unit_price, orderData.currency)}
                             </p>
                           </div>
-                          <p className="whitespace-nowrap">{formatPrice(item.total, orderData.currency)}</p>
+                          <p className="whitespace-nowrap">
+                            {formatPrice(item.total, orderData.currency)}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -596,15 +651,29 @@ export default function Checkout() {
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <p>Subtotal</p>
-                        <p className="whitespace-nowrap">{formatPrice(orderData.subtotal, orderData.currency)}</p>
+                        <p className="whitespace-nowrap">
+                          {formatPrice(orderData.subtotal, orderData.currency)}
+                        </p>
                       </div>
+                      {orderData.discount > 0 && (
+                        <div className="flex justify-between">
+                          <p>Discount</p>
+                          <p className="whitespace-nowrap text-green-600">
+                            -{formatPrice(orderData.discount, orderData.currency)}
+                          </p>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <p>Shipping</p>
-                        <p className="whitespace-nowrap">{formatPrice(orderData.shipping_cost, orderData.currency)}</p>
+                        <p className="whitespace-nowrap">
+                          {formatPrice(orderData.shipping_cost, orderData.currency)}
+                        </p>
                       </div>
                       <div className="flex justify-between font-semibold">
                         <p>Total</p>
-                        <p className="whitespace-nowrap">{formatPrice(orderData.total, orderData.currency)}</p>
+                        <p className="whitespace-nowrap">
+                          {formatPrice(orderData.total, orderData.currency)}
+                        </p>
                       </div>
                     </div>
                   </div>
