@@ -142,7 +142,9 @@ export default function Checkout() {
         shipping_address_id: selectedAddressId!,
         shipping_method_id: selectedShippingMethodId!,
         payment_method: 'wallet',
-        coupon_code: appliedCoupon?.code
+        coupon_code: appliedCoupon?.code,
+        subtotal: subtotal,
+        discount_amount: appliedCoupon ? (subtotal - total) : 0
       });
 
       setOrderData(response.order);

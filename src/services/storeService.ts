@@ -79,6 +79,8 @@ interface CreateOrderData {
   shipping_method_id: string;
   payment_method: string;
   coupon_code?: string;
+  subtotal: number;
+  discount_amount: number;
 }
 
 export const storeService = {
