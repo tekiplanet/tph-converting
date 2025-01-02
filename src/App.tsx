@@ -42,6 +42,7 @@ import MyRequests from '@/pages/MyRequests';
 import ProductRequestDetails from '@/pages/ProductRequestDetails';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import { notificationService } from '@/services/notificationService';
+import { Toast } from '@capacitor/toast';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -398,6 +399,42 @@ const App = () => {
       notificationService.initializePushNotifications();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    let lastBackPress = 0;
+    
+    const handleBackButton = async () => {
+      // Get current timestamp
+      const currentTime = new Date().getTime();
+      
+      // If this is the first back press or more than 2 seconds have passed
+      if (lastBackPress === 0 || currentTime - lastBackPress > 2000) {
+        lastBackPress = currentTime;
+        
+        // Show "Press again to exit" toast
+        await Toast.show({
+          text: 'Press back again to exit',
+          duration: 'short',
+          position: 'bottom'
+        });
+        
+        return;
+      }
+      
+      // If pressed again within 2 seconds, exit the app
+      if (currentTime - lastBackPress <= 2000) {
+        CapacitorApp.exitApp();
+      }
+    };
+
+    // Add back button listener
+    CapacitorApp.addListener('backButton', handleBackButton);
+
+    // Cleanup listener when component unmounts
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, []);
 
   return (
     <ErrorBoundary>

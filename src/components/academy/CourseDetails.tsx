@@ -41,7 +41,7 @@ export default function CourseDetails() {
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(false);
   const user = useAuthStore((state) => state.user);
-  const walletBalance = user?.wallet_balance || 0;
+  const walletBalance = Number(user?.wallet_balance || 0);
   
   // Add settings query at the top with other queries
   const { data: settings } = useQuery({
@@ -50,7 +50,7 @@ export default function CourseDetails() {
   });
 
   // Get enrollment fee from settings
-  const ENROLLMENT_FEE = settings?.enrollment_fee || 1000;
+  const ENROLLMENT_FEE = Number(settings?.enrollment_fee || 1000);
 
   // Fetch course details
   const { 
@@ -219,12 +219,6 @@ export default function CourseDetails() {
       return;
     }
 
-    // Check wallet balance first
-    if (walletBalance < ENROLLMENT_FEE) {
-      setShowInsufficientFundsModal(true);
-      return;
-    }
-
     // Check if already enrolled
     try {
       const existingEnrollments = await enrollmentService.getUserEnrollments();
@@ -277,12 +271,23 @@ export default function CourseDetails() {
       return;
     }
 
-    if (walletBalance < ENROLLMENT_FEE) {
+    // Convert both values to numbers for comparison
+    const currentBalance = Number(walletBalance);
+    const requiredAmount = Number(ENROLLMENT_FEE);
+    
+    console.log('Balance Check:', {
+      currentBalance,
+      requiredAmount,
+      walletBalance,
+      ENROLLMENT_FEE
+    });
+
+    if (currentBalance < requiredAmount) {
       setShowInsufficientFundsModal(true);
       return;
     }
 
-    // Show confirmation modal instead of directly enrolling
+    // If balance is sufficient, show confirmation modal
     setShowConfirmEnrollmentModal(true);
   };
 
@@ -571,7 +576,7 @@ export default function CourseDetails() {
                   <Button 
                     size="lg" 
                     className="w-full h-12 rounded-xl font-medium"
-                    onClick={() => setShowConfirmEnrollmentModal(true)}
+                    onClick={handleEnroll}
                     disabled={loading}
                   >
                     {loading ? 'Enrolling...' : 'Enroll Now'}
