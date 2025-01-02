@@ -48,6 +48,9 @@ const config: CapacitorConfig = {
       smallIcon: "ic_notification",
       iconColor: "#488AFF",
       sound: "notification.wav"
+    },
+    Filesystem: {
+      directory: 'Download'
     }
   },
   android: {
@@ -55,7 +58,10 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: true,
     backgroundColor: "#ffffff",
-    includePlugins: ["@capacitor/push-notifications"],
+    includePlugins: [
+      "@capacitor/push-notifications",
+      "@capacitor/filesystem"
+    ],
     notificationSettings: {
       importance: "high",
       sound: "notification",
