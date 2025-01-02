@@ -116,8 +116,47 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppContent = () => {
   const { isLoading } = useLoading();
   const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+      return;
+    }
+
+    let lastBackPress = 0;
+    
+    const handleBackButton = () => {
+      // If we're at the dashboard root
+      if (location.pathname === '/dashboard' || location.pathname === '/') {
+        const currentTime = new Date().getTime();
+        
+        if (lastBackPress === 0 || currentTime - lastBackPress > 2000) {
+          lastBackPress = currentTime;
+          
+          Toast.show({
+            text: 'Press back again to exit',
+            duration: 'short',
+            position: 'bottom'
+          });
+        } else if (currentTime - lastBackPress <= 2000) {
+          CapacitorApp.exitApp();
+        }
+      } else {
+        // On any other route, just navigate back
+        navigate(-1);
+      }
+    };
+
+    const backButtonListener = CapacitorApp.addListener('backButton', handleBackButton);
+
+    return () => {
+      backButtonListener.remove();
+    };
+  }, [location.pathname, navigate]);
+
   return (
-    <>
+    <Router>
       {isLoading && <PagePreloader />}
       <Suspense fallback={<PagePreloader />}>
         <Routes>
@@ -256,57 +295,8 @@ const AppContent = () => {
       </Suspense>
       <Toaster />
       {import.meta.env.DEV && <DebugLogger />}
-    </>
+    </Router>
   );
-};
-
-const AppWrapper = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [navigationStack, setNavigationStack] = React.useState<string[]>([]);
-
-  // Track route changes
-  useEffect(() => {
-    setNavigationStack(prev => [...prev, location.pathname]);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
-      return;
-    }
-
-    let lastBackPress = 0;
-    
-    const handleBackButton = ({ canGoBack }) => {
-      if (canGoBack) {
-        window.history.back();
-        return;
-      }
-
-      const currentTime = new Date().getTime();
-
-      if (lastBackPress === 0 || currentTime - lastBackPress > 2000) {
-        lastBackPress = currentTime;
-        Toast.show({
-          text: 'Press back again to exit',
-          duration: 'short',
-          position: 'bottom'
-        });
-      } else if (currentTime - lastBackPress <= 2000) {
-        CapacitorApp.exitApp();
-      }
-    };
-
-    // Register back button callback
-    const backButtonHandler = CapacitorApp.addListener('backButton', handleBackButton);
-
-    // Cleanup
-    return () => {
-      backButtonHandler.remove();
-    };
-  }, []);
-
-  return <AppContent />;
 };
 
 const App = () => {
@@ -434,9 +424,7 @@ const App = () => {
               <TooltipProvider>
                 <NotificationProvider>
                   <div className="min-h-screen transition-colors duration-300">
-                    <Router>
-                      <AppWrapper />
-                    </Router>
+                    <AppContent />
                   </div>
                 </NotificationProvider>
               </TooltipProvider>

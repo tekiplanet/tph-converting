@@ -445,16 +445,6 @@ const Dashboard = ({ children }: { children?: React.ReactNode }) => {
 
                 {/* Add Notifications and Test Button here */}
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={testNotifications}
-                    className="hidden md:flex items-center gap-2"
-                  >
-                    <Bell className="w-4 h-4" />
-                    Test Notifications
-                  </Button>
-
                   <Popover open={isDesktopNotificationPopoverOpen} onOpenChange={setIsDesktopNotificationPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="relative">
@@ -580,56 +570,6 @@ const Dashboard = ({ children }: { children?: React.ReactNode }) => {
                       </div>
                     </PopoverContent>
                   </Popover>
-
-                  {/* Profile Menu - Last for non-dashboard pages */}
-                  {location.pathname !== "/dashboard" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="relative h-8 w-8 rounded-full"
-                        >
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage 
-                              src={user?.avatar} 
-                              alt={user?.username || `${user?.first_name} ${user?.last_name}`} 
-                            />
-                            <AvatarFallback>
-                              {user?.username 
-                                ? user.username.charAt(0).toUpperCase() 
-                                : (user?.first_name 
-                                  ? user.first_name.charAt(0).toUpperCase() 
-                                  : '?')
-                                }
-                            </AvatarFallback>
-                          </Avatar>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <div className="flex items-center gap-2 p-2 border-b">
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">{user?.username || 
-                             (user?.first_name && user?.last_name 
-                               ? `${user.first_name} ${user.last_name}` 
-                               : user?.first_name || 
-                                 user?.last_name || 
-                                 user?.email || 
-                                 'User')}</p>
-                            <p className="text-xs text-muted-foreground">{user?.email || 'No email'}</p>
-                          </div>
-                        </div>
-                        <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
-                          <Settings className="mr-2 h-4 w-4" />
-                          Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-500">
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Logout
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                 </div>
               </div>
             </div>
