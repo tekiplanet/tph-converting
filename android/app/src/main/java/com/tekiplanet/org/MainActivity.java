@@ -40,6 +40,9 @@ public class MainActivity extends BridgeActivity {
             registerPlugin(com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin.class);
             Log.d(TAG, "Push notification plugin registered successfully");
 
+            // Add only this new line for LocalNotifications
+            registerPlugin(com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin.class);
+
             // Initialize Firebase
             FirebaseMessaging.getInstance().setAutoInitEnabled(true);
         } catch (Exception e) {

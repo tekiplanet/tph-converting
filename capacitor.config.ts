@@ -60,7 +60,8 @@ const config: CapacitorConfig = {
     backgroundColor: "#ffffff",
     includePlugins: [
       "@capacitor/push-notifications",
-      "@capacitor/filesystem"
+      "@capacitor/filesystem",
+      "@capacitor/local-notifications"
     ],
     notificationSettings: {
       importance: "high",

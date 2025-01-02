@@ -91,27 +91,33 @@ function QuoteDetails() {
   useEffect(() => {
     if (!quoteId) return;
 
-    // Initialize Pusher
     const pusher = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY, {
-      cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-      encrypted: true
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+        encrypted: true
     });
 
-    // Subscribe to the quote channel
     const channel = pusher.subscribe(`quote.${quoteId}`);
     
-    // Listen for new messages
     channel.bind('new-message', (data: { message: Quote['messages'][0] }) => {
-      setQuote(prev => ({
-        ...prev!,
-        messages: [...prev!.messages, data.message]
-      }));
-      scrollToBottom();
+        console.log('New message received:', data);
+        
+        setQuote((prevQuote) => {
+            if (!prevQuote) return prevQuote;
+            
+            const newMessages = [...prevQuote.messages, data.message];
+            console.log('Updating messages:', newMessages);
+            
+            return {
+                ...prevQuote,
+                messages: newMessages
+            };
+        });
     });
 
     return () => {
-      channel.unbind_all();
-      channel.unsubscribe();
+        channel.unbind_all();
+        channel.unsubscribe();
+        pusher.disconnect();
     };
   }, [quoteId]);
 
