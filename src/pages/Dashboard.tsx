@@ -1468,22 +1468,10 @@ const Dashboard = ({ children }: { children?: React.ReactNode }) => {
                           </div>
                         </div>
                       </div>
-
+{/* 
                       {/* Bottom Actions */}
                       <div className="border-t bg-muted/5 p-4 space-y-4">
-                        {/* Test Notifications Button */}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => {
-                            testNotifications();
-                            setIsSheetOpen(false);
-                          }}
-                          className="w-full flex items-center justify-center gap-2"
-                        >
-                          <Bell className="h-4 w-4" />
-                          Test Notifications
-                        </Button>
+
 
                         {/* Theme Toggle */}
                         <div className="flex items-center justify-between px-4 py-2 rounded-xl bg-muted/50">
