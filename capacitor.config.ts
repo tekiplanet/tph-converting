@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { defineConfig } from 'vite';
 
 const config: CapacitorConfig = {
   appId: 'com.tekiplanet.org',
@@ -8,7 +9,8 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'http',
     cleartext: true,
-    url: 'http://192.168.96.190:8080'
+    url: 'http://192.168.96.190:8080',
+    hostname: 'localhost'
   },
   plugins: {
     SplashScreen: {
@@ -32,18 +34,41 @@ const config: CapacitorConfig = {
       url: 'http://192.168.96.190:8080',
       launchUrl: '/',
       webDir: 'dist'
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+      importance: "high",
+      sound: true,
+      vibrate: true,
+      smallIcon: "ic_notification",
+      iconColor: "#488AFF",
+      forceShow: true
+    },
+    LocalNotifications: {
+      smallIcon: "ic_notification",
+      iconColor: "#488AFF",
+      sound: "notification.wav"
     }
   },
   android: {
     allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: true,
+    backgroundColor: "#ffffff",
+    includePlugins: ["@capacitor/push-notifications"],
+    notificationSettings: {
+      importance: "high",
+      sound: "notification",
+      vibrate: true
+    }
   },
   ios: {
     contentInset: "always",
     allowsLinkPreview: true,
     scrollEnabled: true,
-    usesFontScaling: true
+    usesFontScaling: true,
+    includePlugins: ["@capacitor/push-notifications"],
+    backgroundColor: "#ffffff"
   },
   deepLinks: {
     routes: [

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "571795849040",
+    "project_id": "tekiplanet-app",
+    "storage_bucket": "tekiplanet-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571795849040:android:74c0c4aff36b6f53c73655",
+        "android_client_info": {
+          "package_name": "com.tekiplanet.org"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClRmWCpNUCAnlZhuLqWsL-Qp2Mq7JixcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

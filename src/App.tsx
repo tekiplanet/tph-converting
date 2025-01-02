@@ -40,6 +40,8 @@ import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 import ProductRequest from '@/pages/ProductRequest';
 import MyRequests from '@/pages/MyRequests';
 import ProductRequestDetails from '@/pages/ProductRequestDetails';
+import { pushNotificationService } from '@/services/pushNotificationService';
+import { notificationService } from '@/services/notificationService';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
@@ -390,6 +392,12 @@ const App = () => {
       handleExternalLinks();
     }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && platformService.isNative()) {
+      notificationService.initializePushNotifications();
+    }
+  }, [isAuthenticated]);
 
   return (
     <ErrorBoundary>
